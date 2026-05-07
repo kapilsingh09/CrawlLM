@@ -1,44 +1,169 @@
+"""
+CrawlLM v2 — AI-Powered Intelligent Web Scraper
+Main entry point. The user provides what they want to build,
+and CrawlLM automatically scrapes relevant data from multiple free sources.
+"""
+
 import sys
+import os
 import json
+import time
+from datetime import datetime
+
+# Add src directory to path
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+
 from component.gemni_model import get_scrape_plan
-from component.web_scraper import generic_scraper
-from utils import save_to_csv
+from component.web_scraper import scrape_multiple_urls, scrape_single_url
+from utils import save_to_csv, save_timestamped_csv, print_data_summary
 from exception import CustomException
 from logger_config import setup_logger
 
 logger = setup_logger("main")
 
-def process_prompt(prompt):
-    logger.info(f"Processing prompt: {prompt}")
+
+# ═══════════════════════════════════════════════════════════════════════════════
+#  BANNER
+# ═══════════════════════════════════════════════════════════════════════════════
+BANNER = r"""
+╔═══════════════════════════════════════════════════════════════════════╗
+║                                                                       ║
+║    ██████╗██████╗  █████╗ ██╗    ██╗██╗     ██╗     ███╗   ███╗       ║
+║   ██╔════╝██╔══██╗██╔══██╗██║    ██║██║     ██║     ████╗ ████║       ║
+║   ██║     ██████╔╝███████║██║ █╗ ██║██║     ██║     ██╔████╔██║       ║
+║   ██║     ██╔══██╗██╔══██║██║███╗██║██║     ██║     ██║╚██╔╝██║       ║
+║   ╚██████╗██║  ██║██║  ██║╚███╔███╔╝███████╗███████╗██║ ╚═╝ ██║       ║
+║    ╚═════╝╚═╝  ╚═╝╚═╝  ╚═╝ ╚══╝╚══╝ ╚══════╝╚══════╝╚═╝     ╚═╝       ║
+║                                                                       ║
+║   🤖 AI-Powered Intelligent Web Data Collector                       ║
+║   📊 For ML Training Data | Powered by Gemini AI                     ║
+║                                                                       ║
+╚═══════════════════════════════════════════════════════════════════════╝
+"""
+
+
+def process_prompt(prompt: str) -> list[dict]:
+    """
+    Main processing pipeline:
+    1. Send prompt to Gemini AI → get multi-source scraping plan
+    2. Scrape all URLs from the plan
+    3. Show live progress on terminal
+    4. Save to CSV
+    """
+
+    print("\n" + "=" * 70)
+    print("🤖  STEP 1: Analyzing your request with Gemini AI...")
+    print("=" * 70)
+
+    start_time = time.time()
     plan = get_scrape_plan(prompt)
 
-    try:
-        plan_json = json.loads(plan)
-        url = plan_json["url"]
-        logger.info(f"AI extracted URL: {url}")
-    except Exception as e:
-        logger.error("AI failed to extract URL from plan, using default site.")
-        url = "https://news.ycombinator.com"
-        logger.info(f"Using default URL: {url}")
+    # Display the AI plan
+    print("\n📋  AI SCRAPING PLAN:")
+    print("-" * 70)
+    print(f"  Project     : {plan.get('project_description', 'N/A')}")
+    print(f"  Data Type   : {plan.get('data_type', 'N/A')}")
+    print(f"  Strategy    : {plan.get('scraping_strategy', 'N/A')}")
+    print(f"  Est. Rows   : {plan.get('estimated_rows', 'N/A')}")
+    print(f"  Columns     : {', '.join(plan.get('target_columns', []))}")
+    print(f"  URLs to scrape: {len(plan.get('urls', []))}")
+    print("-" * 70)
 
-    try:
-        logger.info(f"Starting generic_scraper for {url}")
-        data = generic_scraper(url)
+    urls = plan.get("urls", [])
+    if not urls:
+        logger.error("❌ No URLs in scraping plan!")
+        return []
 
-        logger.info(f"Saving data to output.csv")
-        save_to_csv(data, "output.csv")
+    print(f"\n  Sources:")
+    for i, u in enumerate(urls, 1):
+        print(f"    {i}. [{u.get('source_name', '?')}] {u.get('url', '?')}")
+        print(f"       → {u.get('description', '')}")
 
-        return data
-    except Exception as e:
-        raise CustomException(e, sys)
+    # ── STEP 2: Scrape all URLs ──
+    print("\n" + "=" * 70)
+    print("🕷️  STEP 2: Scraping data from all sources...")
+    print("=" * 70)
+
+    all_data = scrape_multiple_urls(urls)
+
+    scrape_time = time.time() - start_time
+
+    # ── STEP 3: Save data ──
+    print("\n" + "=" * 70)
+    print("💾  STEP 3: Saving data to CSV...")
+    print("=" * 70)
+
+    # Save main output
+    main_csv = save_to_csv(all_data, "output.csv")
+
+    # Also save timestamped copy
+    ts_csv = save_timestamped_csv(all_data, "crawl")
+
+    # ── STEP 4: Summary ──
+    print_data_summary(all_data)
+
+    print(f"\n  ⏱️ Total time: {scrape_time:.1f} seconds")
+    print(f"  📁 Main CSV: {main_csv}")
+    print(f"  📁 Backup CSV: {ts_csv}")
+    print(f"\n{'='*70}")
+    print(f"  ✅ DONE! Collected {len(all_data):,} rows of data for your ML model.")
+    print(f"{'='*70}\n")
+
+    return all_data
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+#  INTERACTIVE MODE
+# ═══════════════════════════════════════════════════════════════════════════════
+
+def main():
+    """Interactive CLI mode — user enters what they want to build."""
+    print(BANNER)
+
+    while True:
+        print("\n" + "-" * 70)
+        print("💡 Tell me what you want to build, and I'll collect training data for it.")
+        print("   Examples:")
+        print("   • 'I want to build a book recommendation system'")
+        print("   • 'I need data for sentiment analysis on tech news'")
+        print("   • 'I want to build a job matching ML model'")
+        print("   • 'Collect product data for price prediction'")
+        print("   • 'I need quotes data for NLP text classification'")
+        print("   Type 'quit' or 'exit' to stop.")
+        print("-" * 70)
+
+        try:
+            user_prompt = input("\n🎯 Your prompt: ").strip()
+        except (EOFError, KeyboardInterrupt):
+            print("\n\n👋 Goodbye!")
+            break
+
+        if not user_prompt:
+            print("⚠️ Please enter a prompt.")
+            continue
+
+        if user_prompt.lower() in ("quit", "exit", "q"):
+            print("\n👋 Goodbye! Happy training! 🚀")
+            break
+
+        try:
+            result = process_prompt(user_prompt)
+
+            if result:
+                # Show a few sample rows
+                print("\n📋 Sample of collected data:")
+                for row in result[:5]:
+                    text = str(row.get("text", ""))[:100]
+                    print(f"   [{row.get('source', '?')}] ({row.get('type', '?')}) {text}")
+                print(f"   ... and {max(0, len(result) - 5)} more rows\n")
+
+        except CustomException as e:
+            print(f"\n❌ Error: {e}")
+            logger.error(f"CustomException: {e}")
+        except Exception as e:
+            print(f"\n❌ Unexpected error: {e}")
+            logger.error(f"Unexpected error: {e}")
 
 
 if __name__ == "__main__":
-    try:
-        user_prompt = input("Enter your prompt: ")
-        result = process_prompt(user_prompt)
-
-        print(result[:5])
-        
-    except Exception as e:
-        print(f"An error occurred: {e}")
+    main()
