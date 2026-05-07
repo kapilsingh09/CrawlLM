@@ -35,7 +35,7 @@ def deduplicate_data(data: list[dict]) -> list[dict]:
 
     removed = len(data) - len(unique_data)
     if removed > 0:
-        logger.info(f"🧹 Deduplicated: removed {removed} duplicate rows")
+        logger.info(f"[~] Deduplicated: removed {removed} duplicate rows")
     return unique_data
 
 
@@ -45,7 +45,7 @@ def save_to_csv(data: list[dict], filename: str = "output.csv", append: bool = F
     Returns the full path to the saved file.
     """
     if not data:
-        logger.warning("⚠️ No data to save!")
+        logger.warning("[!] No data to save!")
         return ""
 
     # Deduplicate before saving
@@ -66,11 +66,11 @@ def save_to_csv(data: list[dict], filename: str = "output.csv", append: bool = F
         df = pd.concat([existing_df, df], ignore_index=True)
         # Deduplicate again after merge
         df = df.drop_duplicates(subset=["text", "type", "source"], keep="first")
-        logger.info(f"📎 Appended to existing file. Total rows now: {len(df)}")
+        logger.info(f"[+] Appended to existing file. Total rows now: {len(df)}")
 
     df.to_csv(filepath, index=False, encoding="utf-8-sig")
 
-    logger.info(f"💾 Saved {len(df)} rows to: {filepath}")
+    logger.info(f"[OK] Saved {len(df)} rows to: {filepath}")
     logger.info(f"   Columns: {list(df.columns)}")
     logger.info(f"   File size: {os.path.getsize(filepath):,} bytes")
 
@@ -87,13 +87,13 @@ def save_timestamped_csv(data: list[dict], prefix: str = "crawl") -> str:
 def print_data_summary(data: list[dict]):
     """Print a beautiful summary of collected data to terminal."""
     if not data:
-        print("\n⚠️ No data collected.")
+        print("\n[!] No data collected.")
         return
 
     df = pd.DataFrame(data)
 
     print("\n" + "=" * 70)
-    print("📊  DATA COLLECTION SUMMARY")
+    print("[+]  DATA COLLECTION SUMMARY")
     print("=" * 70)
 
     print(f"\n  Total rows collected  : {len(df):,}")
@@ -101,17 +101,17 @@ def print_data_summary(data: list[dict]):
     print(f"  Columns               : {', '.join(df.columns)}")
 
     if "source" in df.columns:
-        print(f"\n  📡 Data by Source:")
+        print(f"\n  [>] Data by Source:")
         for source, count in df["source"].value_counts().items():
-            print(f"     • {source}: {count:,} rows")
+            print(f"     * {source}: {count:,} rows")
 
     if "type" in df.columns:
-        print(f"\n  📦 Data by Type:")
+        print(f"\n  [>] Data by Type:")
         for dtype, count in df["type"].value_counts().items():
-            print(f"     • {dtype}: {count:,} rows")
+            print(f"     * {dtype}: {count:,} rows")
 
     # Show sample data
-    print(f"\n  📋 Sample Data (first 5 rows):")
+    print(f"\n  [>] Sample Data (first 5 rows):")
     print("  " + "-" * 66)
 
     sample = df.head(5)

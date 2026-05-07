@@ -49,28 +49,28 @@ def _fetch_page(url: str, retries: int = 3, timeout: int = 15) -> str | None:
     """
     for attempt in range(1, retries + 1):
         try:
-            logger.info(f"  📡 Fetching: {url} (attempt {attempt}/{retries})")
+            logger.info(f"  [>] Fetching: {url} (attempt {attempt}/{retries})")
             response = requests.get(url, headers=_get_headers(), timeout=timeout)
             response.raise_for_status()
-            logger.info(f"  ✅ Success: {response.status_code} | Size: {len(response.text):,} bytes")
+            logger.info(f"  [OK] Success: {response.status_code} | Size: {len(response.text):,} bytes")
             return response.text
         except requests.exceptions.Timeout:
-            logger.warning(f"  ⏱️ Timeout on attempt {attempt} for {url}")
+            logger.warning(f"  [T] Timeout on attempt {attempt} for {url}")
         except requests.exceptions.HTTPError as e:
-            logger.warning(f"  ❌ HTTP {e.response.status_code} on attempt {attempt} for {url}")
+            logger.warning(f"  [X] HTTP {e.response.status_code} on attempt {attempt} for {url}")
             if e.response.status_code == 404:
                 return None  # Don't retry 404s
         except requests.exceptions.ConnectionError:
-            logger.warning(f"  🔌 Connection error on attempt {attempt} for {url}")
+            logger.warning(f"  [!] Connection error on attempt {attempt} for {url}")
         except Exception as e:
-            logger.warning(f"  ⚠️ Error on attempt {attempt}: {e}")
+            logger.warning(f"  [!] Error on attempt {attempt}: {e}")
 
         if attempt < retries:
             wait = 2 ** attempt + random.uniform(0, 1)
-            logger.info(f"  ⏳ Waiting {wait:.1f}s before retry...")
+            logger.info(f"  [..] Waiting {wait:.1f}s before retry...")
             time.sleep(wait)
 
-    logger.error(f"  💀 Failed to fetch {url} after {retries} attempts")
+    logger.error(f"  [FAIL] Failed to fetch {url} after {retries} attempts")
     return None
 
 
@@ -352,7 +352,7 @@ def scrape_single_url(url: str, source_name: str = "", expected_elements: list =
     # 1. Try structured content patterns first (these are the richest)
     structured = _extract_structured_content(soup, source_name)
     if structured:
-        logger.info(f"  📦 Found {len(structured)} structured items")
+        logger.info(f"  [+] Found {len(structured)} structured items")
         all_data.extend(structured)
 
     # 2. Extract metadata
@@ -361,28 +361,28 @@ def scrape_single_url(url: str, source_name: str = "", expected_elements: list =
 
     # 3. Extract headings
     headings = _extract_headings(soup, source_name)
-    logger.info(f"  📌 Found {len(headings)} headings")
+    logger.info(f"  [+] Found {len(headings)} headings")
     all_data.extend(headings)
 
     # 4. Extract tables
     tables = _extract_tables(soup, source_name)
     if tables:
-        logger.info(f"  📊 Found {len(tables)} table rows")
+        logger.info(f"  [+] Found {len(tables)} table rows")
         all_data.extend(tables)
 
     # 5. Extract paragraphs
     paragraphs = _extract_paragraphs(soup, source_name)
-    logger.info(f"  📄 Found {len(paragraphs)} paragraphs")
+    logger.info(f"  [+] Found {len(paragraphs)} paragraphs")
     all_data.extend(paragraphs)
 
     # 6. Extract links
     links = _extract_links(soup, source_name, url)
-    logger.info(f"  🔗 Found {len(links)} links")
+    logger.info(f"  [+] Found {len(links)} links")
     all_data.extend(links)
 
     # 7. Extract lists
     lists = _extract_lists(soup, source_name)
-    logger.info(f"  📋 Found {len(lists)} list items")
+    logger.info(f"  [+] Found {len(lists)} list items")
     all_data.extend(lists)
 
     return all_data
@@ -404,20 +404,20 @@ def scrape_multiple_urls(url_configs: list[dict]) -> list[dict]:
 
         print()
         logger.info(f"{'='*60}")
-        logger.info(f"🌐 [{i}/{total_urls}] Scraping: {source_name}")
+        logger.info(f">>> [{i}/{total_urls}] Scraping: {source_name}")
         logger.info(f"   URL: {url}")
         logger.info(f"   Description: {description}")
         logger.info(f"{'='*60}")
 
         data = scrape_single_url(url, source_name, expected)
 
-        logger.info(f"  📊 Collected {len(data)} rows from {source_name}")
+        logger.info(f"  [+] Collected {len(data)} rows from {source_name}")
         all_data.extend(data)
 
         # Rate limiting — be polite
         if i < total_urls:
             delay = random.uniform(1.0, 2.5)
-            logger.info(f"  ⏳ Rate limiting: waiting {delay:.1f}s...")
+            logger.info(f"  [..] Rate limiting: waiting {delay:.1f}s...")
             time.sleep(delay)
 
     return all_data

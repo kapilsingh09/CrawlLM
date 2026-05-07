@@ -127,7 +127,7 @@ def get_scrape_plan(user_prompt: str) -> dict:
     Send the user's prompt to Gemini AI and get back a comprehensive
     multi-source scraping plan as a parsed dictionary.
     """
-    logger.info(f"🤖 Sending prompt to Gemini AI: '{user_prompt}'")
+    logger.info(f"[*] Sending prompt to Gemini AI: '{user_prompt}'")
 
     try:
         response = client.models.generate_content(
@@ -136,7 +136,7 @@ def get_scrape_plan(user_prompt: str) -> dict:
         )
 
         raw_text = response.text.strip()
-        logger.info(f"📥 Raw AI response length: {len(raw_text)} chars")
+        logger.info(f"[<] Raw AI response length: {len(raw_text)} chars")
 
         # Clean up response — remove markdown code fences if present
         cleaned = raw_text
@@ -151,26 +151,26 @@ def get_scrape_plan(user_prompt: str) -> dict:
         plan = json.loads(cleaned)
 
         url_count = len(plan.get("urls", []))
-        logger.info(f"✅ AI generated scraping plan with {url_count} URLs")
-        logger.info(f"📊 Data type: {plan.get('data_type', 'unknown')}")
-        logger.info(f"📋 Target columns: {plan.get('target_columns', [])}")
-        logger.info(f"📈 Estimated rows: {plan.get('estimated_rows', 'unknown')}")
+        logger.info(f"[OK] AI generated scraping plan with {url_count} URLs")
+        logger.info(f"[+] Data type: {plan.get('data_type', 'unknown')}")
+        logger.info(f"[+] Target columns: {plan.get('target_columns', [])}")
+        logger.info(f"[+] Estimated rows: {plan.get('estimated_rows', 'unknown')}")
 
         return plan
 
     except json.JSONDecodeError as e:
-        logger.error(f"❌ Failed to parse AI response as JSON: {e}")
-        logger.error(f"📄 Raw response was: {raw_text[:500]}")
+        logger.error(f"[X] Failed to parse AI response as JSON: {e}")
+        logger.error(f"[>] Raw response was: {raw_text[:500]}")
 
         # Fallback plan
         fallback = _generate_fallback_plan(user_prompt)
-        logger.info("🔄 Using fallback scraping plan")
+        logger.info("[~] Using fallback scraping plan")
         return fallback
 
     except Exception as e:
-        logger.error(f"❌ Gemini API error: {e}")
+        logger.error(f"[X] Gemini API error: {e}")
         fallback = _generate_fallback_plan(user_prompt)
-        logger.info("🔄 Using fallback scraping plan")
+        logger.info("[~] Using fallback scraping plan")
         return fallback
 
 
