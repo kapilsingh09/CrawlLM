@@ -18,7 +18,8 @@ from logger_config import setup_logger
 logger = setup_logger("gemini_model")
 
 # ─── Load API key from environment ───────────────────────────────────────────
-API_KEY = os.environ.get("GEMINI_API_KEY", "AIzaSyC9UMh9MCrURILgGrefJzGRbQrm2N4MGFo")
+
+API_KEY = os.environ.get("GEMINI_API_KEY")
 client = genai.Client(api_key=API_KEY)
 
 
